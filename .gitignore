@@ -1,0 +1,18 @@
+# Ignore package setup generated files
+*.egg-info/
+build/
+dist/
+# Ignore pycache
+*/__pycache__
+# Ignore venv
+*venv/
+# Ignore vscode specific files
+.vscode/
+# Ignore some file formats (usually present for the user)
+*.png
+*.gif
+*.jpg
+*.jpeg
+*.info
+# Ignore input images used for testing
+*/images
