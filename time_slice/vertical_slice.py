@@ -2,7 +2,7 @@ import glob
 from PIL import Image
 
 
-def main():
+def vertical_slice():
     path = "images/*.jpg"
     image_files = glob.glob(path)
 
@@ -29,4 +29,4 @@ def main():
     print('Done...')
 
 if __name__ == "__main__":
-    main()
+    vertical_slice()
