@@ -1,12 +1,11 @@
-import os
+from pathlib import Path, PurePath
 from PIL import Image, ImageDraw
 from math import sqrt, pi, sin, acos, cos
 import numpy as np
-from typing import Optional
 
 
 class TimeSlice:
-    def __init__(self, input_path: str, slice_mode: Optional[str] = 'vertical') -> None:
+    def __init__(self, input_path: str, slice_mode: str = 'vertical') -> None:
         """
         Combines all images into a single sliced image that is saved in output directory
         Parameters:-
@@ -18,13 +17,12 @@ class TimeSlice:
         self.num_images = len(self.img_files)
         self.slice_mode = slice_mode
 
-        self.input_path = os.path.split(os.path.abspath(__file__))[0]
-        self.output_path = os.path.join(self.input_path, 'time_slice_output')
-
         with Image.open(self.img_files[0]) as reference_image:
             self.img_height = reference_image.height
             self.img_width = reference_image.width
+            
 
+    def create_time_slice(self):
         match self.slice_mode:
             case 'circle':
                 sliced_img = self.slice_circle()
@@ -38,8 +36,7 @@ class TimeSlice:
                 sliced_img = self.slice_diagonal()
             case _:
                 sliced_img = self.slice_vertical()
-
-        self._export_slice(sliced_img)
+        return sliced_img
 
     @staticmethod
     def _get_dir_image_files(path: str) -> list[str]:
@@ -51,11 +48,15 @@ class TimeSlice:
         @param path: path to directory
         @return: list of filenames of images contained in the directory
         """
-        files = os.listdir(path)
+
+        filePath = Path(path)
+        if not filePath.is_dir():
+            raise NotADirectoryError(f'Invalid directory specified: {path}')
+
         img_files = []
-        for file in files:
-            if file.endswith(('.jpg', '.jpeg', '.png')):
-                img_files.append(os.path.join(path, file))
+        for file in filePath.iterdir():
+            if file.is_file() and file.suffix.lower() in {'.jpg', '.jpeg', '.png', '.gif', '.bmp'}:
+                img_files.append(file)
 
         if len(img_files) == 0:
             raise FileNotFoundError(
@@ -257,7 +258,7 @@ class TimeSlice:
             right -= spacing_x
         return base_image
 
-    def _export_slice(self, image: Image.Image) -> None:
+    def export_slice(self, image: Image.Image, outputDirectory: str) -> None:
         """
         Exports PIL image to a jpeg
         Creates directory specified by self.output_path if not exists and 
@@ -266,14 +267,16 @@ class TimeSlice:
         @param image: PIL image to save
         @return None
         """
-        if not os.path.exists(self.output_path):
-            os.makedirs(self.output_path)
-        path = os.path.join(
-            self.output_path,
-            f'time_slice_{self.slice_mode}_{self.num_images}_images.jpeg')
+
+        # Check if output path is a valid file path
+        Path(outputDirectory).mkdir(parents=True, exist_ok=True)
+        fullPath = str(PurePath(
+            outputDirectory,
+            f'timeslice_{self.slice_mode}_{self.num_images}_images.jpeg'))
+
         try:
-            image.save(path, format='JPEG')
+            image.save(fullPath, format='JPEG')
         except OSError:
             print('Image could not be written')
         else:
-            print(f'Time slice image written to {path}')
+            print(f'Time slice image written to {fullPath}')
