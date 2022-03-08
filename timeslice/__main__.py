@@ -41,8 +41,8 @@ def main():
     if args.pattern not in slice_modes():
         raise ValueError('Invalid pattern')
 
-    t = TimeSlice(args.directory, args.pattern)
-    sliced_image = t.create_time_slice()
+    t = TimeSlice(args.directory)
+    sliced_image = t.create_time_slice(args.pattern)
     t.export_slice(sliced_image, args.outputDirectory)
 
 

@@ -5,50 +5,55 @@ import numpy as np
 
 
 class TimeSlice:
-    def __init__(self, input_path: str, slice_mode: str = 'vertical') -> None:
+    def __init__(self, input_path: str) -> None:
         """
-        Combines all images into a single sliced image that is saved in output directory
-        Parameters:-
-        input_put: Path to directory containing image set to create slices from
-        slice_mode: Pattern to create the slice, defaults to vertical
+        Initialise TimeSlice class, passing directory of input images in which is checked to contain valid images,
+        instance variables of image files and image dimensions are set
+        :param input_path: Path to directory containing timelapse images
+        :type input_path: str
         """
-
         self.img_files = self._get_dir_image_files(input_path)
         self.num_images = len(self.img_files)
-        self.slice_mode = slice_mode
-
+        self.slice_mode = ''
         with Image.open(self.img_files[0]) as reference_image:
             self.img_height = reference_image.height
             self.img_width = reference_image.width
-            
 
-    def create_time_slice(self):
+    def create_time_slice(self, slice_mode: str = 'vertical') -> Image.Image:
+        """
+        Combines all images into a single time slice image with pattern specified by slice_mode and returns the image.
+        If slice_mode is not specified, default it vertical
+        :param slice_mode: Pattern to create the slice, defaults to vertical
+        :type slice_mode: str
+        :return: The time slice image combined from the images
+        :rtype: Image.Image
+        """
+        self.slice_mode = slice_mode
         match self.slice_mode:
             case 'circle':
-                sliced_img = self.slice_circle()
+                sliced_img = self._slice_circle()
             case 'sectorcentre':
-                sliced_img = self.slice_sector_centre()
+                sliced_img = self._slice_sector_centre()
             case 'sectorbottom':
-                sliced_img = self.slice_sector_bottom()
+                sliced_img = self._slice_sector_bottom()
             case 'rectangle':
-                sliced_img = self.slice_rectangle()
+                sliced_img = self._slice_rectangle()
             case 'diagonal':
-                sliced_img = self.slice_diagonal()
+                sliced_img = self._slice_diagonal()
             case _:
-                sliced_img = self.slice_vertical()
+                sliced_img = self._slice_vertical()
         return sliced_img
 
     @staticmethod
-    def _get_dir_image_files(path: str) -> list[str]:
+    def _get_dir_image_files(path: str) -> list[Path]:
         """
-        Returns list of image filenames images in specified directory
-
-        Iterates over files in specified directory and adds to list if they 
-        are of type jpg or png.
-        @param path: path to directory
-        @return: list of filenames of images contained in the directory
+        Returns list of image filenames images in specified directory. Iterates over files in specified directory and
+        adds to list if they are of type jpg or png
+        :param path: path to directory
+        :type path: str
+        :return: list of filenames of images contained in the directory
+        :rtype: list[Path]
         """
-
         filePath = Path(path)
         if not filePath.is_dir():
             raise NotADirectoryError(f'Invalid directory specified: {path}')
@@ -64,12 +69,13 @@ class TimeSlice:
 
         return img_files
 
-    def slice_vertical(self) -> Image.Image:
+    def _slice_vertical(self) -> Image.Image:
         """
         Creates a single image of horizontal slices from the set of images.
-        Creates horizontal slices of the set of images combined into a single 
-        image. Width of each slice is image width divided by number of images.
-        @return: PIL Image of combined horizontally sliced images
+        Creates horizontal slices of the set of images combined into a single image. Width of each slice is image width
+        divided by number of images.
+        :return: PIL Image of combined horizontally sliced images
+        :rtype: Image.Image
         """
         spacing_x = self.img_width / self.num_images
         offset = 0
@@ -88,13 +94,13 @@ class TimeSlice:
             offset += spacing_x
         return base_image
 
-    def slice_circle(self) -> Image.Image:
+    def _slice_circle(self) -> Image.Image:
         """
         Creates a single image of circular slices from the set of images
-        Creates annulus or pattern from set of images. Width of each donut 
-        equal to half the diagonal of the image divided by the number of 
-        images.
-        @return: PIL Image of combined circular/donut sliced images
+        Creates annulus or pattern from set of images. Width of each donut equal to half the diagonal of the image
+        divided by the number of images.
+        :return: PIL Image of combined circular/donut sliced images
+        :rtype: Image.Image
         """
         # centre of image
         centre_x, centre_y = self.img_width / 2, self.img_height / 2
@@ -111,17 +117,15 @@ class TimeSlice:
             selected_image = Image.open(image_file).convert('RGB')
             base_image.paste(selected_image, (0, 0), mask_im)
             radius -= spacing
-
         return base_image
 
-    def slice_diagonal(self) -> Image.Image:
+    def _slice_diagonal(self) -> Image.Image:
         """
-        Creates a single image of diagonal slices from the set of images.
-        Combines the images into singular image of diagonal slices. Width is
-        the image's diagonal length divided by the number of images. Angle of
-        diagonals determined by the angle made between the diagonal length and
-        the image height.
-        @return: PIL Image of combined diagonally sliced images
+        Creates a single image of diagonal slices from the set of images. Combines the images into singular image of
+        diagonal slices. Width is the image's diagonal length divided by the number of images. Angle of diagonals
+        determined by the angle made between the diagonal length and the image height.
+        :return: PIL Image of combined diagonally sliced images
+        :rtype: Image.Image
         """
         diagonal_length = sqrt((self.img_height ** 2) + (self.img_width ** 2))
         spacing = diagonal_length / self.num_images
@@ -137,21 +141,21 @@ class TimeSlice:
             x_end = offset / sin(theta)
             y_end = offset / sin(pi / 2 - theta)
             draw.polygon([(x_start, y_start), (x_end, y_start),
-                         (x_start, y_end), (x_start, y_start)], fill=0)
+                          (x_start, y_end), (x_start, y_start)], fill=0)
             selected_image = Image.open(image_file).convert('RGB')
             base_image.paste(selected_image, (0, 0), mask_im)
             offset += spacing
         return base_image
 
-    def slice_sector_centre(self) -> Image.Image:
+    def _slice_sector_centre(self) -> Image.Image:
         """
         Creates single image of a circle sector pattern from set of images.
-        Sector pattern originates in centre of image. Angle of each sector 
-        calculated by 360 degrees divided by the number of images. Pattern
-        made by creating mask of a triangle polygon with apex at centre of 
-        image (width / 2, height / 2). Altitude of triangle set as diagonal 
-        length of image dimensions to ensure the mask covers to edge of image.
-        @return: PIL Image of combined sector sliced images
+        Sector pattern originates in centre of image. Angle of each sector calculated by 360 degrees divided by the
+        number of images. Pattern made by creating mask of a triangle polygon with apex at centre of image
+        (width / 2, height / 2). Altitude of triangle set as diagonal length of image dimensions to ensure the mask
+        covers to edge of image.
+        :return: PIL Image of combined sector sliced images
+        :rtype: Image.Image
         """
         centre_x, centre_y = self.img_width / 2, self.img_height / 2
         diagonal_length = sqrt((self.img_height ** 2) + (self.img_width ** 2))
@@ -182,16 +186,15 @@ class TimeSlice:
             pt_2 = pt2_x, pt2_y
         return base_image
 
-    def slice_sector_bottom(self) -> Image.Image:
+    def _slice_sector_bottom(self) -> Image.Image:
         """
-        Creates single image of a circle sector pattern with origin at bottom 
-        of image from set of images. Sector pattern originates at bottom 
-        centre of image. Angle of each sector calculated by 180 degrees
-        divided by the number of images. Pattern made by creating mask of a 
-        triangle polygon with apex at bottom, middle of image 
-        (width / 2, height). Altitude of triangle set as diagonal length of 
-        image dimensions to ensure the mask covers to edge of image.
-        @return: PIL Image of combined sector sliced images
+        Creates single image of a circle sector pattern with origin at bottom of image from set of images. Sector
+        pattern originates at bottom centre of image. Angle of each sector calculated by 180 degrees divided by the
+        number of images. Pattern made by creating mask of a triangle polygon with apex at bottom, middle of image
+        (width / 2, height). Altitude of triangle set as diagonal length of image dimensions to ensure the mask covers
+        to edge of image.
+        :return: PIL Image of combined sector sliced images
+        :rtype: Image.Image
         """
         diagonal_length = sqrt((self.img_height ** 2) + (self.img_width ** 2))
         # origin referring to bottom centre of image where slice apexes are
@@ -201,15 +204,11 @@ class TimeSlice:
         # start at 270 deg - (0,0) is top left, pasting slices left to right
         # image is situated in top right of plane (+x, +y)
         angle_rad = np.radians(270)
-        pt1_x = origin_x + diagonal_length * \
-            np.around(sin(angle_rad), decimals=5)
-        pt1_y = origin_y + diagonal_length * \
-            np.around(cos(angle_rad), decimals=5)
+        pt1_x = origin_x + diagonal_length * np.around(sin(angle_rad), decimals=5)
+        pt1_y = origin_y + diagonal_length * np.around(cos(angle_rad), decimals=5)
         angle_rad -= base_angle_rad
-        pt2_x = origin_x + diagonal_length * \
-            np.around(sin(angle_rad), decimals=5)
-        pt2_y = origin_y + diagonal_length * \
-            np.around(cos(angle_rad), decimals=5)
+        pt2_x = origin_x + diagonal_length * np.around(sin(angle_rad), decimals=5)
+        pt2_y = origin_y + diagonal_length * np.around(cos(angle_rad), decimals=5)
         pt_0 = origin_x, origin_y
         pt_1 = pt1_x, pt1_y
         pt_2 = pt2_x, pt2_y
@@ -223,21 +222,19 @@ class TimeSlice:
             pt_1 = pt2_x, pt2_y
             # moving left to right, so minus base angle to get spacing
             angle_rad -= base_angle_rad
-            pt2_x = origin_x + diagonal_length * \
-                np.around(sin(angle_rad), decimals=5)
-            pt2_y = origin_y + diagonal_length * \
-                np.around(cos(angle_rad), decimals=5)
+            pt2_x = origin_x + diagonal_length * np.around(sin(angle_rad), decimals=5)
+            pt2_y = origin_y + diagonal_length * np.around(cos(angle_rad), decimals=5)
             pt_2 = pt2_x, pt2_y
         return base_image
 
-    def slice_rectangle(self) -> Image.Image:
+    def _slice_rectangle(self) -> Image.Image:
         """
         Creates single image of rectangle pattern combining set of images.
-        Images are combined in a rectangle frame-like pattern with same aspect
-        ratio as dimensions of image dimensions equal to be image width/number 
-        images/2 and image height/number images/2. Rectangle frames are 
-        centred at the centre of the image.
-        @return: PIL Image of combined rectangular pattern of sliced images
+        Images are combined in a rectangle frame-like pattern with same aspect ratio as dimensions of image dimensions
+        equal to be image width/number images/2 and image height/number images/2. Rectangle frames are centred at the
+        centre of the image.
+        :return: PIL Image of combined rectangular pattern of sliced images
+        :rtype: Image.Image
         """
         spacing_x = self.img_width / self.num_images / 2
         spacing_y = self.img_height / self.num_images / 2
@@ -249,7 +246,7 @@ class TimeSlice:
             mask_im = Image.new("L", base_image.size, 0)
             draw = ImageDraw.Draw(mask_im)
             draw.polygon([(left, top), (right, top),
-                         (right, bottom), (left, bottom)], fill=255)
+                          (right, bottom), (left, bottom)], fill=255)
             selected_image = Image.open(image_file).convert('RGB')
             base_image.paste(selected_image, (0, 0), mask_im)
             top += spacing_y
@@ -264,16 +261,15 @@ class TimeSlice:
         Creates directory specified by self.output_path if not exists and 
         saves the PIL image as a jpeg with filename based on the slice pattern
         and number of images inputted.
-        @param image: PIL image to save
-        @return None
+        :param image: PIL image to save
+        :type image: Image.Image
+        :param outputDirectory: directory to save the image
+        :type outputDirectory: str
         """
-
-        # Check if output path is a valid file path
         Path(outputDirectory).mkdir(parents=True, exist_ok=True)
         fullPath = str(PurePath(
             outputDirectory,
             f'timeslice_{self.slice_mode}_{self.num_images}_images.jpeg'))
-
         try:
             image.save(fullPath, format='JPEG')
         except OSError:
