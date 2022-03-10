@@ -16,27 +16,26 @@ class TimeSlice:
         self.img_files = self._get_dir_image_files(input_path)
         self.num_images = len(self.img_files)
         self.num_slices = self.num_images
-        self.step = 1
         self.slice_mode = ''
         with Image.open(self.img_files[0]) as reference_image:
             self.img_height = reference_image.height
             self.img_width = reference_image.width
 
-    def create_time_slice(self, slice_mode: str = 'vertical', slices_num: int = 0) -> Image.Image:
+    def create_time_slice(self, slice_mode: str = 'vertical', slices_number: int = 0) -> Image.Image:
         """
-        Combines all images into a single time slice image with pattern specified by slice_mode and returns the image.
-        If slice_mode is not specified, default it vertical
+        Combines all images into a single time slice image with pattern specified by slice_mode and returns the
+        image. If slice_mode is not specified, default it vertical
         :param slice_mode: Pattern to create the slice, defaults to vertical
         :type slice_mode: str
-        :param slices_num:  Number of images to use in the photo slice, defaults to 0. If slices_num is 0, this argument
-        is ignored and all input images are used
-        :type slices_num: int
-        :return: The time slice image combined from the images
-        :rtype: Image.Image
+        :param slices_number:  Number of images to use in the photo slice, defaults to 0. If slices_number is 0, this
+        argument is ignored and all input images are used
+        :type slices_number: int
+        :return: The time slice image combined from the images :rtype: Image.Image
         """
         self.slice_mode = slice_mode
-        self.num_slices = slices_num if 0 < slices_num < self.num_images else self.num_images
-        self.step = (self.num_images // slices_num) if 0 < slices_num < self.num_images else 1
+        self.num_slices = slices_number if 0 < slices_number < self.num_images else self.num_images
+        # Use np.linspace to select equally spaced subset of image files if number of slices < number images        
+        self.img_files = [self.img_files[int(i)] for i in np.linspace(0, self.num_images - 1, self.num_slices)]
 
         match self.slice_mode:
             case 'circle':
@@ -86,7 +85,7 @@ class TimeSlice:
         spacing_x = self.img_width / self.num_slices
         offset = 0
         base_image = Image.new("RGB", (self.img_width, self.img_height), 0)
-        for image_file in self.img_files[::self.step]:
+        for image_file in self.img_files:
             mask_im = Image.new("L", base_image.size, 0)
             draw = ImageDraw.Draw(mask_im)
             draw.polygon(
@@ -111,7 +110,7 @@ class TimeSlice:
         # width or 'thickness' of each donut shaped slice
         spacing = radius / self.num_slices
         base_image = Image.new("RGB", (self.img_width, self.img_height), 0)
-        for image_file in self.img_files[::self.step]:
+        for image_file in self.img_files:
             mask_im = Image.new("L", base_image.size, 0)
             draw = ImageDraw.Draw(mask_im)
             x0, y0 = centre_x - radius, centre_y - radius
@@ -137,7 +136,7 @@ class TimeSlice:
         x_start, y_start = 0, 0
         # white base image
         base_image = Image.new("RGB", (self.img_width, self.img_height), 0)
-        for image_file in self.img_files[::self.step]:
+        for image_file in self.img_files:
             mask_im = Image.new("L", base_image.size, 255)
             draw = ImageDraw.Draw(mask_im)
             x_end = offset / sin(theta)
@@ -174,7 +173,7 @@ class TimeSlice:
         pt_1 = pt1_x, pt1_y
         pt_2 = pt2_x, pt2_y
         base_image = Image.new("RGB", (self.img_width, self.img_height), 255)
-        for image_file in self.img_files[::self.step]:
+        for image_file in self.img_files:
             mask_im = Image.new("L", base_image.size, 0)
             draw = ImageDraw.Draw(mask_im)
             draw.polygon([pt_0, pt_1, pt_2, pt_0], fill=255)
@@ -214,7 +213,7 @@ class TimeSlice:
         pt_1 = pt1_x, pt1_y
         pt_2 = pt2_x, pt2_y
         base_image = Image.new("RGB", (self.img_width, self.img_height), 255)
-        for image_file in self.img_files[::self.step]:
+        for image_file in self.img_files:
             mask_im = Image.new("L", base_image.size, 0)
             draw = ImageDraw.Draw(mask_im)
             draw.polygon([pt_0, pt_1, pt_2, pt_0], fill=255)
@@ -243,7 +242,7 @@ class TimeSlice:
         bottom = self.img_height
         right = self.img_width
         base_image = Image.new("RGB", (self.img_width, self.img_height), 0)
-        for image_file in self.img_files[::self.step]:
+        for image_file in self.img_files:
             mask_im = Image.new("L", base_image.size, 0)
             draw = ImageDraw.Draw(mask_im)
             draw.polygon([(left, top), (right, top), (right, bottom), (left, bottom)], fill=255)
