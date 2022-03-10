@@ -1,5 +1,6 @@
 import argparse
 from typing import Dict
+
 from time_slice import TimeSlice
 
 
@@ -9,18 +10,20 @@ def slice_modes() -> list[str]:
 
 def get_help() -> Dict:
     help_text = dict()
-    help_text['path'] = "Relative or absolute string path to source images directory"
-    help_text['pattern'] = "Slicing pattern to use. Choose from values " + \
-        ', '.join(slice_modes()) + ' (default: vertical)'
+    help_text['path'] = "Path to the directory containing source images (relative or absolute)."
+    help_text[
+        'pattern'] = "Slicing pattern to use. Choose from values " + ', '.join(slice_modes()) + ' (default: vertical)'
     help_text['outputDirectory'] = "Path where the resultant timeslice image is saved (default: current directory)"
-    help_text['numberSlices'] = "The number of images to combine into a single timeslice image (default: all images used)"
+    help_text[
+        'numberSlices'] = "The number of images to combine into a single timeslice image (default: all images used)"
     return help_text
 
 
 def main():
     help_text = get_help()
     parser = argparse.ArgumentParser(
-        description='time_slice: Create timeslice images from time lapse photo sets, with customimsable geometric patterns')
+        description='time_slice: Create timeslice images from time lapse photo sets, with customisable geometric '
+                    'patterns')
 
     parser.add_argument('directory',
                         type=str, help=help_text['path'])
@@ -36,7 +39,7 @@ def main():
                         default='',
                         help=help_text['outputDirectory'],
                         )
-    parser.add_argument('-n', '--numberSlices', metavar='NUMBER_SLICES',
+    parser.add_argument('-n', '--number-slices', metavar='NUMBER_SLICES',
                         type=int,
                         default=0,
                         help=help_text['numberSlices']
@@ -48,8 +51,9 @@ def main():
         raise ValueError('Invalid pattern')
 
     t = TimeSlice(args.directory)
-    sliced_image = t.create_time_slice(args.pattern, args.numberSlices)
+    sliced_image = t.create_time_slice(args.pattern, args.number_slices)
     t.export_slice(sliced_image, args.output)
+
 
 if __name__ == '__main__':
     main()

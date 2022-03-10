@@ -1,7 +1,8 @@
-from pathlib import Path, PurePath
-from PIL import Image, ImageDraw
 from math import sqrt, pi, sin, acos, cos
+from pathlib import Path, PurePath
+
 import numpy as np
+from PIL import Image, ImageDraw
 
 
 class TimeSlice:
@@ -14,6 +15,8 @@ class TimeSlice:
         """
         self.img_files = self._get_dir_image_files(input_path)
         self.num_images = len(self.img_files)
+        self.num_slices = self.num_images
+        self.step = 1
         self.slice_mode = ''
         with Image.open(self.img_files[0]) as reference_image:
             self.img_height = reference_image.height
@@ -25,13 +28,15 @@ class TimeSlice:
         If slice_mode is not specified, default it vertical
         :param slice_mode: Pattern to create the slice, defaults to vertical
         :type slice_mode: str
+        :param slices_num:  Number of images to use in the photo slice, defaults to 0. If slices_num is 0, this argument
+        is ignored and all input images are used
+        :type slices_num: int
         :return: The time slice image combined from the images
         :rtype: Image.Image
         """
         self.slice_mode = slice_mode
         self.num_slices = slices_num if 0 < slices_num < self.num_images else self.num_images
-        self.step = (self.num_images //
-                     slices_num) if 0 < slices_num < self.num_images else 1
+        self.step = (self.num_images // slices_num) if 0 < slices_num < self.num_images else 1
 
         match self.slice_mode:
             case 'circle':
@@ -58,18 +63,15 @@ class TimeSlice:
         :return: list of filenames of images contained in the directory
         :rtype: list[Path]
         """
-        filePath = Path(path)
-        if not filePath.is_dir():
+        file_path = Path(path)
+        if not file_path.is_dir():
             raise NotADirectoryError(f'Invalid directory specified: {path}')
-
         img_files = []
-        for file in filePath.iterdir():
+        for file in file_path.iterdir():
             if file.is_file() and file.suffix.lower() in {'.jpg', '.jpeg', '.png', '.gif', '.bmp'}:
                 img_files.append(file)
-
         if len(img_files) == 0:
-            raise FileNotFoundError(
-                f'No images found at given path: {path}')
+            raise FileNotFoundError(f'No images found at given path: {path}')
 
         return img_files
 
@@ -88,10 +90,7 @@ class TimeSlice:
             mask_im = Image.new("L", base_image.size, 0)
             draw = ImageDraw.Draw(mask_im)
             draw.polygon(
-                [(offset, 0),
-                 (self.img_width, 0),
-                 (self.img_width, self.img_height),
-                 (offset, self.img_height)],
+                [(offset, 0), (self.img_width, 0), (self.img_width, self.img_height), (offset, self.img_height)],
                 fill=255)
             selected_image = Image.open(image_file).convert('RGB')
             base_image.paste(selected_image, (0, 0), mask_im)
@@ -143,8 +142,7 @@ class TimeSlice:
             draw = ImageDraw.Draw(mask_im)
             x_end = offset / sin(theta)
             y_end = offset / sin(pi / 2 - theta)
-            draw.polygon([(x_start, y_start), (x_end, y_start),
-                          (x_start, y_end), (x_start, y_start)], fill=0)
+            draw.polygon([(x_start, y_start), (x_end, y_start), (x_start, y_end), (x_start, y_start)], fill=0)
             selected_image = Image.open(image_file).convert('RGB')
             base_image.paste(selected_image, (0, 0), mask_im)
             offset += spacing
@@ -207,15 +205,11 @@ class TimeSlice:
         # start at 270 deg - (0,0) is top left, pasting slices left to right
         # image is situated in top right of plane (+x, +y)
         angle_rad = np.radians(270)
-        pt1_x = origin_x + diagonal_length * \
-            np.around(sin(angle_rad), decimals=5)
-        pt1_y = origin_y + diagonal_length * \
-            np.around(cos(angle_rad), decimals=5)
+        pt1_x = origin_x + diagonal_length * np.around(sin(angle_rad), decimals=5)
+        pt1_y = origin_y + diagonal_length * np.around(cos(angle_rad), decimals=5)
         angle_rad -= base_angle_rad
-        pt2_x = origin_x + diagonal_length * \
-            np.around(sin(angle_rad), decimals=5)
-        pt2_y = origin_y + diagonal_length * \
-            np.around(cos(angle_rad), decimals=5)
+        pt2_x = origin_x + diagonal_length * np.around(sin(angle_rad), decimals=5)
+        pt2_y = origin_y + diagonal_length * np.around(cos(angle_rad), decimals=5)
         pt_0 = origin_x, origin_y
         pt_1 = pt1_x, pt1_y
         pt_2 = pt2_x, pt2_y
@@ -229,10 +223,8 @@ class TimeSlice:
             pt_1 = pt2_x, pt2_y
             # moving left to right, so minus base angle to get spacing
             angle_rad -= base_angle_rad
-            pt2_x = origin_x + diagonal_length * \
-                np.around(sin(angle_rad), decimals=5)
-            pt2_y = origin_y + diagonal_length * \
-                np.around(cos(angle_rad), decimals=5)
+            pt2_x = origin_x + diagonal_length * np.around(sin(angle_rad), decimals=5)
+            pt2_y = origin_y + diagonal_length * np.around(cos(angle_rad), decimals=5)
             pt_2 = pt2_x, pt2_y
         return base_image
 
@@ -254,8 +246,7 @@ class TimeSlice:
         for image_file in self.img_files[::self.step]:
             mask_im = Image.new("L", base_image.size, 0)
             draw = ImageDraw.Draw(mask_im)
-            draw.polygon([(left, top), (right, top),
-                          (right, bottom), (left, bottom)], fill=255)
+            draw.polygon([(left, top), (right, top), (right, bottom), (left, bottom)], fill=255)
             selected_image = Image.open(image_file).convert('RGB')
             base_image.paste(selected_image, (0, 0), mask_im)
             top += spacing_y
@@ -264,24 +255,21 @@ class TimeSlice:
             right -= spacing_x
         return base_image
 
-    def export_slice(self, image: Image.Image, outputDirectory: str) -> None:
+    def export_slice(self, image: Image.Image, output_directory: str) -> None:
         """
         Exports PIL image to a jpeg
-        Creates directory specified by self.output_path if not exists and 
-        saves the PIL image as a jpeg with filename based on the slice pattern
-        and number of images inputted.
+        Creates directory specified by self.output_path if not exists and saves the PIL image as a jpeg with filename
+        based on the slice pattern and number of images inputted
         :param image: PIL image to save
         :type image: Image.Image
-        :param outputDirectory: directory to save the image
-        :type outputDirectory: str
+        :param output_directory: directory to save the image
+        :type output_directory: str
         """
-        Path(outputDirectory).mkdir(parents=True, exist_ok=True)
-        fullPath = str(PurePath(
-            outputDirectory,
-            f'timeslice_{self.slice_mode}_{self.num_slices}_images.jpeg'))
+        Path(output_directory).mkdir(parents=True, exist_ok=True)
+        full_path = str(PurePath(output_directory, f'timeslice_{self.slice_mode}_{self.num_slices}_images.jpg'))
         try:
-            image.save(fullPath, format='JPEG')
+            image.save(full_path, format='JPEG')
         except OSError:
             print('Image could not be written')
         else:
-            print(f'Time slice image written to {fullPath}')
+            print(f'Time slice image written to {full_path}')
