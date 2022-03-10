@@ -19,7 +19,7 @@ class TimeSlice:
             self.img_height = reference_image.height
             self.img_width = reference_image.width
 
-    def create_time_slice(self, slice_mode: str = 'vertical') -> Image.Image:
+    def create_time_slice(self, slice_mode: str = 'vertical', slices_num: int = 0) -> Image.Image:
         """
         Combines all images into a single time slice image with pattern specified by slice_mode and returns the image.
         If slice_mode is not specified, default it vertical
@@ -29,6 +29,10 @@ class TimeSlice:
         :rtype: Image.Image
         """
         self.slice_mode = slice_mode
+        self.num_slices = slices_num if 0 < slices_num < self.num_images else self.num_images
+        self.step = (self.num_images //
+                     slices_num) if 0 < slices_num < self.num_images else 1
+
         match self.slice_mode:
             case 'circle':
                 sliced_img = self._slice_circle()
@@ -77,10 +81,10 @@ class TimeSlice:
         :return: PIL Image of combined horizontally sliced images
         :rtype: Image.Image
         """
-        spacing_x = self.img_width / self.num_images
+        spacing_x = self.img_width / self.num_slices
         offset = 0
         base_image = Image.new("RGB", (self.img_width, self.img_height), 0)
-        for image_file in self.img_files:
+        for image_file in self.img_files[::self.step]:
             mask_im = Image.new("L", base_image.size, 0)
             draw = ImageDraw.Draw(mask_im)
             draw.polygon(
@@ -106,9 +110,9 @@ class TimeSlice:
         centre_x, centre_y = self.img_width / 2, self.img_height / 2
         radius = sqrt((centre_x ** 2) + (centre_y ** 2))
         # width or 'thickness' of each donut shaped slice
-        spacing = radius / self.num_images
+        spacing = radius / self.num_slices
         base_image = Image.new("RGB", (self.img_width, self.img_height), 0)
-        for image_file in self.img_files:
+        for image_file in self.img_files[::self.step]:
             mask_im = Image.new("L", base_image.size, 0)
             draw = ImageDraw.Draw(mask_im)
             x0, y0 = centre_x - radius, centre_y - radius
@@ -128,15 +132,14 @@ class TimeSlice:
         :rtype: Image.Image
         """
         diagonal_length = sqrt((self.img_height ** 2) + (self.img_width ** 2))
-        spacing = diagonal_length / self.num_images
+        spacing = diagonal_length / self.num_slices
         theta = acos(self.img_height / diagonal_length)
         offset = 0
         x_start, y_start = 0, 0
         # white base image
-        base_image = Image.new(
-            "RGB", (self.img_width, self.img_height), 255)
-        for image_file in self.img_files:
-            mask_im = Image.new("L", base_image.size, 0)
+        base_image = Image.new("RGB", (self.img_width, self.img_height), 0)
+        for image_file in self.img_files[::self.step]:
+            mask_im = Image.new("L", base_image.size, 255)
             draw = ImageDraw.Draw(mask_im)
             x_end = offset / sin(theta)
             y_end = offset / sin(pi / 2 - theta)
@@ -160,7 +163,7 @@ class TimeSlice:
         centre_x, centre_y = self.img_width / 2, self.img_height / 2
         diagonal_length = sqrt((self.img_height ** 2) + (self.img_width ** 2))
         # angle refers to sector size of each image
-        angle = 360 / self.num_images
+        angle = 360 / self.num_slices
         base_angle_rad = np.radians(angle)
         angle_rad = 0
         # calculate in radians pt_1 and pt_2 triangle vertices
@@ -173,7 +176,7 @@ class TimeSlice:
         pt_1 = pt1_x, pt1_y
         pt_2 = pt2_x, pt2_y
         base_image = Image.new("RGB", (self.img_width, self.img_height), 255)
-        for image_file in self.img_files:
+        for image_file in self.img_files[::self.step]:
             mask_im = Image.new("L", base_image.size, 0)
             draw = ImageDraw.Draw(mask_im)
             draw.polygon([pt_0, pt_1, pt_2, pt_0], fill=255)
@@ -199,21 +202,25 @@ class TimeSlice:
         diagonal_length = sqrt((self.img_height ** 2) + (self.img_width ** 2))
         # origin referring to bottom centre of image where slice apexes are
         origin_x, origin_y = self.img_width / 2, self.img_height
-        angle = 180 / self.num_images
+        angle = 180 / self.num_slices
         base_angle_rad = np.around(np.radians(angle), decimals=5)
         # start at 270 deg - (0,0) is top left, pasting slices left to right
         # image is situated in top right of plane (+x, +y)
         angle_rad = np.radians(270)
-        pt1_x = origin_x + diagonal_length * np.around(sin(angle_rad), decimals=5)
-        pt1_y = origin_y + diagonal_length * np.around(cos(angle_rad), decimals=5)
+        pt1_x = origin_x + diagonal_length * \
+            np.around(sin(angle_rad), decimals=5)
+        pt1_y = origin_y + diagonal_length * \
+            np.around(cos(angle_rad), decimals=5)
         angle_rad -= base_angle_rad
-        pt2_x = origin_x + diagonal_length * np.around(sin(angle_rad), decimals=5)
-        pt2_y = origin_y + diagonal_length * np.around(cos(angle_rad), decimals=5)
+        pt2_x = origin_x + diagonal_length * \
+            np.around(sin(angle_rad), decimals=5)
+        pt2_y = origin_y + diagonal_length * \
+            np.around(cos(angle_rad), decimals=5)
         pt_0 = origin_x, origin_y
         pt_1 = pt1_x, pt1_y
         pt_2 = pt2_x, pt2_y
         base_image = Image.new("RGB", (self.img_width, self.img_height), 255)
-        for image_file in self.img_files:
+        for image_file in self.img_files[::self.step]:
             mask_im = Image.new("L", base_image.size, 0)
             draw = ImageDraw.Draw(mask_im)
             draw.polygon([pt_0, pt_1, pt_2, pt_0], fill=255)
@@ -222,8 +229,10 @@ class TimeSlice:
             pt_1 = pt2_x, pt2_y
             # moving left to right, so minus base angle to get spacing
             angle_rad -= base_angle_rad
-            pt2_x = origin_x + diagonal_length * np.around(sin(angle_rad), decimals=5)
-            pt2_y = origin_y + diagonal_length * np.around(cos(angle_rad), decimals=5)
+            pt2_x = origin_x + diagonal_length * \
+                np.around(sin(angle_rad), decimals=5)
+            pt2_y = origin_y + diagonal_length * \
+                np.around(cos(angle_rad), decimals=5)
             pt_2 = pt2_x, pt2_y
         return base_image
 
@@ -236,13 +245,13 @@ class TimeSlice:
         :return: PIL Image of combined rectangular pattern of sliced images
         :rtype: Image.Image
         """
-        spacing_x = self.img_width / self.num_images / 2
-        spacing_y = self.img_height / self.num_images / 2
+        spacing_x = self.img_width / self.num_slices / 2
+        spacing_y = self.img_height / self.num_slices / 2
         top, left = 0, 0
         bottom = self.img_height
         right = self.img_width
         base_image = Image.new("RGB", (self.img_width, self.img_height), 0)
-        for image_file in self.img_files:
+        for image_file in self.img_files[::self.step]:
             mask_im = Image.new("L", base_image.size, 0)
             draw = ImageDraw.Draw(mask_im)
             draw.polygon([(left, top), (right, top),

@@ -13,6 +13,7 @@ def get_help() -> Dict:
     help_text['pattern'] = "Slicing pattern to use. Choose from values " + \
         ', '.join(slice_modes()) + ' (default: vertical)'
     help_text['outputDirectory'] = "Path where the resultant timeslice image is saved (default: current directory)"
+    help_text['numberSlices'] = "The number of images to combine into a single timeslice image (default: all images used)"
     return help_text
 
 
@@ -30,10 +31,15 @@ def main():
                         help=help_text['pattern'],
                         choices=slice_modes()
                         )
-    parser.add_argument('-o', '--outputDirectory', metavar='OUTPUT_DIRECTORY',
+    parser.add_argument('-o', '--output', metavar='OUTPUT_DIRECTORY',
                         type=str,
                         default='',
                         help=help_text['outputDirectory'],
+                        )
+    parser.add_argument('-n', '--numberSlices', metavar='NUMBER_SLICES',
+                        type=int,
+                        default=0,
+                        help=help_text['numberSlices']
                         )
     args = parser.parse_args()
 
@@ -42,9 +48,8 @@ def main():
         raise ValueError('Invalid pattern')
 
     t = TimeSlice(args.directory)
-    sliced_image = t.create_time_slice(args.pattern)
-    t.export_slice(sliced_image, args.outputDirectory)
-
+    sliced_image = t.create_time_slice(args.pattern, args.numberSlices)
+    t.export_slice(sliced_image, args.output)
 
 if __name__ == '__main__':
     main()
