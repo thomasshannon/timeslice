@@ -278,7 +278,7 @@ class TimeSlice:
         Path(outputDirectory).mkdir(parents=True, exist_ok=True)
         fullPath = str(PurePath(
             outputDirectory,
-            f'timeslice_{self.slice_mode}_{self.num_images}_images.jpeg'))
+            f'timeslice_{self.slice_mode}_{self.num_slices}_images.jpeg'))
         try:
             image.save(fullPath, format='JPEG')
         except OSError:
