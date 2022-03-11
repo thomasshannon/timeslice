@@ -37,19 +37,18 @@ class TimeSlice:
         # Use np.linspace to select equally spaced subset of image files if number of slices < number images        
         self.img_files = [self.img_files[int(i)] for i in np.linspace(0, self.num_images - 1, self.num_slices)]
 
-        match self.slice_mode:
-            case 'circle':
-                sliced_img = self._slice_circle()
-            case 'sectorcentre':
-                sliced_img = self._slice_sector_centre()
-            case 'sectorbottom':
-                sliced_img = self._slice_sector_bottom()
-            case 'rectangle':
-                sliced_img = self._slice_rectangle()
-            case 'diagonal':
-                sliced_img = self._slice_diagonal()
-            case _:
-                sliced_img = self._slice_vertical()
+        if self.slice_mode == 'circle':
+            sliced_img = self._slice_circle()
+        elif self.slice_mode == 'sectorcentre':
+            sliced_img = self._slice_sector_centre()
+        elif self.slice_mode == 'sectorbottom':
+            sliced_img = self._slice_sector_bottom()
+        elif self.slice_mode == 'rectangle':
+            sliced_img = self._slice_rectangle()
+        elif self.slice_mode == 'diagonal':
+            sliced_img = self._slice_diagonal()
+        else:
+            sliced_img = self._slice_vertical()
         return sliced_img
 
     @staticmethod
@@ -162,11 +161,11 @@ class TimeSlice:
         # angle refers to sector size of each image
         angle = 360 / self.num_slices
         base_angle_rad = np.radians(angle)
-        angle_rad = 0
+        angle_rad = np.radians(360)
         # calculate in radians pt_1 and pt_2 triangle vertices
         pt1_x = centre_x + diagonal_length * sin(angle_rad)
         pt1_y = centre_y + diagonal_length * cos(angle_rad)
-        angle_rad += base_angle_rad
+        angle_rad -= base_angle_rad
         pt2_x = centre_x + diagonal_length * sin(angle_rad)
         pt2_y = centre_y + diagonal_length * cos(angle_rad)
         pt_0 = centre_x, centre_y
@@ -180,7 +179,7 @@ class TimeSlice:
             selected_image = Image.open(image_file).convert('RGB')
             base_image.paste(selected_image, (0, 0), mask_im)
             pt_1 = pt2_x, pt2_y
-            angle_rad += base_angle_rad
+            angle_rad -= base_angle_rad
             pt2_x = centre_x + diagonal_length * sin(angle_rad)
             pt2_y = centre_y + diagonal_length * cos(angle_rad)
             pt_2 = pt2_x, pt2_y
