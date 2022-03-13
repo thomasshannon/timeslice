@@ -14,5 +14,5 @@ __pycache__/
 *.jpg
 *.jpeg
 *.info
-# Ignore input images used for testing
-*/images
+# Allow .jpg files in this directory to be tracked
+!/images/*.jpg
